@@ -1,10 +1,15 @@
+import os
 from flask import Flask, jsonify
 import json
 import tensorflow as tf
 from keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
+from datetime import datetime
 
 app = Flask(__name__)
+
+# Path ke direktori tempat hasil crawler disimpan
+CRAWLER_JSON_DIR = '/Talas/CrawlerNews'
 
 # Load the tokenizer from JSON
 with open('/root/Talas/pukul6-talas/tokenizer.json', 'r') as f:
@@ -43,11 +48,24 @@ def classify_text(text):
     
     return float(predictions_tflite[0]), predicted_label
 
-@app.route('/api/classify_news', methods=['GET'])
-def classify_news():
+# Route untuk klasifikasi berita berdasarkan topik
+@app.route('/api/classify_news/<topik>', methods=['GET'])
+def classify_news(topik):
     try:
+        # Format topik dan tanggal sesuai struktur penamaan file JSON dari crawler
+        topik = topik.replace(" ", "-").replace("/", "-")
+        date_str = datetime.now().strftime('%d%m%y')
+        filename = f'scraped_news_{topik}_{date_str}.json'
+        
+        # Path lengkap ke file JSON
+        filepath = os.path.join(CRAWLER_JSON_DIR, filename)
+
+        # Cek apakah file JSON ada di direktori
+        if not os.path.exists(filepath):
+            return jsonify({'error': f'File {filename} not found'}), 404
+
         # Load the scraped news JSON file
-        with open('/root/Talas/wsele/scraped_news_topik.json', 'r') as f:
+        with open(filepath, 'r') as f:
             scraped_news = json.load(f)
 
         # Classify each news article
